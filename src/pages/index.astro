@@ -39,7 +39,6 @@
             <p class="eyebrow">SHOW THIS FACE</p>
             <div class="face-title"><span id="face-name">U</span> <small id="face-range">A–D</small></div>
             <p id="hold-hint">Top face. Keep the B face toward the top of the camera frame.</p>
-            <div class="mini-face" id="preview-grid"></div>
             <div class="actions">
               <button id="start-camera">Start camera</button>
               <button id="capture" disabled>Capture face</button>
@@ -137,7 +136,7 @@ const faceColors = {
         $('face-range').textContent = letterRange(face);
         $('hold-hint').textContent = hints[face];
         $('undo').disabled = step === 0;
-        renderPreview(rawScans[face]);
+        //renderPreview(rawScans[face]);
       }
 
       function renderPreview(samples) {
@@ -171,7 +170,7 @@ const faceColors = {
       function capture() {
         const face = FACE_ORDER[step];
         rawScans[face] = sampleGrid($('camera'));
-        renderPreview(rawScans[face]);
+        //renderPreview(rawScans[face]);
         if (step < 5) {
           step++;
           updateStep();
