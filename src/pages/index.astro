@@ -84,6 +84,16 @@
             <div id="corner-notes" class="notes"></div>
           </article>
         </div>
+        <div class="panel result-cube-panel">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">SCANNED CUBE</p>
+              <h2>Cube model</h2>
+            </div>
+            <p class="hint result-model-hint">Read-only. Use Edit scan to correct a sticker.</p>
+          </div>
+          <div id="result-cube-net" class="cube-net cube-net-result"></div>
+        </div>
         <div class="panel compact">
           <div class="actions">
             <button id="copy-memo">Copy memo</button>
@@ -99,15 +109,9 @@
       import { sampleGrid, colorDistance } from '../lib/color';
 
       const $ = (id) => document.getElementById(id);
-
-const faceColors = {
-  U: '#ffd52a', // yellow
-  L: '#2968db', // blue
-  F: '#e43b32', // red
-  R: '#22b85a', // green
-  B: '#ff8c1a', // orange
-  D: '#f4f4ef', // white
-};
+      const faceColors = {
+        U: '#ffd52a', L: '#2968db', F: '#e43b32', R: '#22b85a', B: '#ff8c1a', D: '#f4f4ef'
+      };
       const hints = {
         U: 'Top face. Keep the B face toward the top of the camera frame.',
         L: 'Left face. Keep U toward the top of the camera frame.',
@@ -136,18 +140,8 @@ const faceColors = {
         $('face-range').textContent = letterRange(face);
         $('hold-hint').textContent = hints[face];
         $('undo').disabled = step === 0;
-        //renderPreview(rawScans[face]);
       }
 
-      function renderPreview(samples) {
-        const box = $('preview-grid');
-        box.replaceChildren();
-        for (let i = 0; i < 9; i++) {
-          const cell = document.createElement('div');
-          if (samples?.[i]) cell.style.background = `rgb(${samples[i].r},${samples[i].g},${samples[i].b})`;
-          box.append(cell);
-        }
-      }
 
       async function startCamera() {
         try {
@@ -170,7 +164,6 @@ const faceColors = {
       function capture() {
         const face = FACE_ORDER[step];
         rawScans[face] = sampleGrid($('camera'));
-        //renderPreview(rawScans[face]);
         if (step < 5) {
           step++;
           updateStep();
@@ -202,12 +195,12 @@ const faceColors = {
         $('scan-panel').hidden = true;
         $('result-panel').hidden = true;
         $('review-panel').hidden = false;
-        renderNet();
+        renderCubeNet('cube-net', true);
         renderValidation();
       }
 
-      function renderNet() {
-        const net = $('cube-net');
+      function renderCubeNet(targetId, editable = false) {
+        const net = $(targetId);
         net.replaceChildren();
         const layout = [
           ['U', 0, 1], ['L', 1, 0], ['F', 1, 1], ['R', 1, 2], ['B', 1, 3], ['D', 2, 1]
@@ -219,18 +212,20 @@ const faceColors = {
           f.style.gridColumn = String(col + 1);
           for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) {
             const idx = faceletIndex(face, r, c);
-            const cell = document.createElement('button');
-            cell.className = 'sticker';
+            const cell = document.createElement(editable ? 'button' : 'div');
+            cell.className = `sticker${editable ? '' : ' sticker-readonly'}`;
             cell.style.background = faceColors[state[idx]];
             const info = letterInfo[idx];
             cell.textContent = info?.letter ?? (r === 1 && c === 1 ? face : '');
-            if (r === 1 && c === 1) cell.disabled = true;
-            else cell.onclick = () => {
-              const current = FACE_ORDER.indexOf(state[idx]);
-              state[idx] = FACE_ORDER[(current + 1) % FACE_ORDER.length];
-              renderNet();
-              renderValidation();
-            };
+            if (editable) {
+              if (r === 1 && c === 1) cell.disabled = true;
+              else cell.onclick = () => {
+                const current = FACE_ORDER.indexOf(state[idx]);
+                state[idx] = FACE_ORDER[(current + 1) % FACE_ORDER.length];
+                renderCubeNet('cube-net', true);
+                renderValidation();
+              };
+            }
             f.append(cell);
           }
           net.append(f);
@@ -284,6 +279,7 @@ const faceColors = {
         $('corner-cycles').textContent = `cycles: ${result.corners.cycles.map(c => `${c.isBreak ? '↳ ' : ''}${c.letters.join('')}`).join('  ·  ') || '—'}`;
         $('edge-notes').innerHTML = notesHtml(result.edges);
         $('corner-notes').innerHTML = notesHtml(result.corners);
+        renderCubeNet('result-cube-net', false);
       }
 
       function resetAll() {
@@ -343,18 +339,21 @@ const faceColors = {
   .camera-message { position:absolute; inset:0; display:grid; place-items:center; text-align:center; padding:24px; color:var(--muted); }
   .instructions { display:flex; flex-direction:column; justify-content:center; } .face-title { font-size:72px; line-height:.9; font-weight:900; letter-spacing:-.08em; } .face-title small { font-size:16px; letter-spacing:.04em; color:var(--muted); vertical-align:middle; }
   #hold-hint { margin-top:16px; color:#d6dae4; line-height:1.5; }
-  .mini-face { width:132px; display:grid; grid-template-columns:repeat(3,1fr); gap:4px; margin:20px 0; } .mini-face div { aspect-ratio:1; border:1px solid #303642; background:#222631; border-radius:5px; }
   .actions { display:flex; gap:9px; flex-wrap:wrap; } .hint { color:var(--muted); font-size:13px; line-height:1.5; margin-top:12px; }
   .section-head { display:flex; justify-content:space-between; gap:18px; align-items:flex-start; margin-bottom:16px; }
   .cube-net { display:grid; grid-template-columns:repeat(4, minmax(72px, 112px)); grid-template-rows:repeat(3, auto); gap:8px; justify-content:center; padding:18px 0; overflow:auto; }
   .net-face { display:grid; grid-template-columns:repeat(3,1fr); gap:3px; }
-  .sticker { aspect-ratio:1; padding:0; border:1px solid rgba(0,0,0,.45); border-radius:6px; color:#111; text-shadow:0 1px rgba(255,255,255,.2); font-weight:900; min-width:22px; }
+  .sticker { aspect-ratio:1; padding:0; border:1px solid rgba(0,0,0,.45); border-radius:6px; color:#111; text-shadow:0 1px rgba(255,255,255,.2); font-weight:900; min-width:22px; display:grid; place-items:center; }
+  .sticker-readonly { cursor:default; }
   .validation { border-radius:11px; padding:12px 14px; margin:12px 0 16px; font-size:14px; line-height:1.5; } .validation.good { background:#12251c; color:#8ce0ad; border:1px solid #25553a; } .validation.bad { background:#2b1719; color:#ff999f; border:1px solid #663036; }
   .parity-card { display:flex; gap:14px; align-items:center; background:#392a0d; border:1px solid #80621b; color:#ffd86b; border-radius:14px; padding:15px 18px; margin-bottom:14px; }
   .result-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; } .memo-card { min-height:250px; }
   .memo { display:flex; flex-wrap:wrap; gap:14px; margin:18px 0; } .pair { display:flex; gap:4px; } .pair span { width:46px; height:46px; display:grid; place-items:center; border-radius:9px; background:var(--tile); color:#111; font-size:22px; font-weight:950; border:1px solid rgba(0,0,0,.35); } .pair .blank { background:transparent; color:var(--muted); border:1px dashed #4b5160; }
   .empty { color:var(--muted); }
   .cycles { color:#a9b0c0; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:13px; line-height:1.6; } .notes { color:#ffc766; margin-top:10px; font-size:13px; line-height:1.5; }
+  .result-cube-panel { margin-top:14px; }
+  .cube-net-result { padding-bottom:4px; }
+  .result-model-hint { margin-top:0; text-align:right; }
   .compact { margin-top:14px; }
-  @media (max-width: 760px) { .shell{width:min(100% - 20px,1080px);padding-top:20px}.scan-layout,.result-grid{grid-template-columns:1fr}.instructions{padding-top:4px}.face-title{font-size:58px}.cube-net{grid-template-columns:repeat(4,72px)} header .ghost{display:none} }
+  @media (max-width: 760px) { .shell{width:min(100% - 20px,1080px);padding-top:20px}.scan-layout,.result-grid{grid-template-columns:1fr}.instructions{padding-top:4px}.face-title{font-size:58px}.cube-net{grid-template-columns:repeat(4,72px)}.result-model-hint{text-align:left} header .ghost{display:none} }
 </style>
